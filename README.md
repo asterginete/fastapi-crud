@@ -9,19 +9,13 @@ This is a simple CRUD API built using FastAPI for managing a collection of items
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone [YOUR_REPOSITORY_URL]
-   cd [YOUR_REPOSITORY_DIRECTORY]
-   ```
-
-2. Create a virtual environment (recommended):
+1. Create a virtual environment (recommended):
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
    ```
 
-3. Install the required packages:
+2. Install the required packages:
    ```bash
    pip install fastapi[all] uvicorn
    ```
