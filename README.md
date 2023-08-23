@@ -1,50 +1,56 @@
-# FastAPI CRUD API
+# FastAPI CRUD API with PostgreSQL
 
-This is a simple CRUD API built using FastAPI for managing a collection of items. The API provides endpoints to create, read, update, and delete items, as well as additional functionalities like searching items by name and counting all items.
+This is a CRUD API built using FastAPI that provides endpoints to manage a collection of items. The API features token-based authentication, authorization, data validation, and uses PostgreSQL as its database.
 
 ## Prerequisites
 
 - Python 3.7 or higher
-- pip
+- PostgreSQL
 
 ## Installation
 
-1. Create a virtual environment (recommended):
+1. **Set Up a Virtual Environment** (recommended):
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
    ```
 
-2. Install the required packages:
+2. **Install Required Packages**:
    ```bash
-   pip install fastapi[all] uvicorn
+   pip install fastapi[all] uvicorn sqlalchemy asyncpg databases passlib[jwt] jose
    ```
 
-## Running the API
+3. **Configure Database**:
+   - Ensure you have a running PostgreSQL instance.
+   - Create a new database for the application.
+   - Update the `DATABASE_URL` in the application code with your PostgreSQL credentials and database details.
 
-1. Start the API server using Uvicorn:
+4. **Run the Application**:
    ```bash
    uvicorn main:app --reload
    ```
 
-2. Once the server is running, you can access the interactive API documentation by visiting:
-   ```
-   http://127.0.0.1:8000/docs
-   ```
+## Features
+
+- **CRUD Operations**: Create, read, update, and delete items.
+- **Authentication**: Token-based authentication using JWT.
+- **Authorization**: Role-based authorization to restrict access to certain routes.
+- **Data Validation**: Input and data validation using Pydantic.
+- **Database**: PostgreSQL integration using SQLAlchemy and asyncpg.
 
 ## Endpoints
 
-- **Create an item**: `POST /items/`
-- **Retrieve all items**: `GET /items/`
-- **Retrieve a specific item by ID**: `GET /items/{item_id}`
-- **Update a specific item by ID**: `PUT /items/{item_id}`
-- **Delete a specific item by ID**: `DELETE /items/{item_id}`
-- **Retrieve items by name**: `GET /items/search/{name}`
-- **Update the name of a specific item by ID**: `PATCH /items/{item_id}/name`
-- **Update the description of a specific item by ID**: `PATCH /items/{item_id}/description`
-- **Retrieve the count of all items**: `GET /items/count`
-- **Delete all items**: `DELETE /items/`
+- **Token Generation**: `POST /token`
+- **Create an Item**: `POST /items/`
+- **Retrieve All Items**: `GET /items/`
+- **Retrieve a Specific Item by ID**: `GET /items/{item_id}`
+- **Update a Specific Item by ID**: `PUT /items/{item_id}`
+- **Delete a Specific Item by ID**: `DELETE /items/{item_id}`
 
 ## Contributing
 
 If you'd like to contribute, please fork the repository and make changes as you'd like. Pull requests are warmly welcome.
+
+## License
+
+This project is open-source and available under the [MIT License](https://opensource.org/licenses/MIT).
