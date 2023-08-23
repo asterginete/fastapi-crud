@@ -1,17 +1,60 @@
 from fastapi import FastAPI, HTTPException, Depends, Security
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, constr, validator
-from typing import List, Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+import sqlalchemy
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from databases import Database
+from sqlalchemy.future import select
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 app = FastAPI()
 
+# Constants for JWT
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Database configuration
+DATABASE_URL = "postgresql+asyncpg://username:password@localhost:5432/mydatabase"
+database = Database(DATABASE_URL)
+metadata = sqlalchemy.MetaData()
+
+Base = declarative_base()
+
+# Database models
+class UserInDB(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    role = Column(String)
+
+class ItemInDB(Base):
+    __tablename__ = "items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+    name = Column(String, index=True)
+    description = Column(String, index=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+
+    owner = relationship("UserInDB", back_populates="items")
+
+UserInDB.items = relationship("ItemInDB", back_populates="owner")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+
+# Create tables
+Base.metadata.create_all(bind=engine)
+
+# Pydantic models and validation
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -21,23 +64,19 @@ class TokenData(BaseModel):
     scopes: List[str] = []
 
 class User(BaseModel):
-    username: constr(min_length=3, max_length=20)  # Username must be between 3 and 20 characters
-    password: constr(min_length=8)  # Password must be at least 8 characters long
-    role: constr(regex="^(admin|user)$")  # Role can only be 'admin' or 'user'
+    username: constr(min_length=3, max_length=20)
+    password: constr(min_length=8)
+    role: constr(regex="^(admin|user)$")
 
     @validator("password")
     def validate_password(cls, password):
-        # Ensure password has at least one digit and one letter
         if not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
             raise ValueError("Password must contain at least one digit and one letter")
         return password
 
-class UserInDB(User):
-    hashed_password: str
-
 class Item(BaseModel):
-    name: constr(min_length=3, max_length=50)  # Name must be between 3 and 50 characters
-    description: Optional[constr(max_length=200)]  # Description can't be longer than 200 characters
+    name: constr(min_length=3, max_length=50)
+    description: Optional[constr(max_length=200)]
 
 # In-memory storage
 items = {}
@@ -173,3 +212,10 @@ async def delete_all_items():
     items.clear()
     return {"status": "All items deleted successfully"}
 
+@app.on_event("startup")
+async def startup():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown():
+    await database.disconnect()
