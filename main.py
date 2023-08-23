@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, SecurityScopes
-from pydantic import BaseModel
+from pydantic import BaseModel, constr, validator
 from typing import List, Optional
 from passlib.context import CryptContext
 from jose import JWTError, jwt
@@ -21,16 +21,23 @@ class TokenData(BaseModel):
     scopes: List[str] = []
 
 class User(BaseModel):
-    username: str
-    password: str
-    role: str
+    username: constr(min_length=3, max_length=20)  # Username must be between 3 and 20 characters
+    password: constr(min_length=8)  # Password must be at least 8 characters long
+    role: constr(regex="^(admin|user)$")  # Role can only be 'admin' or 'user'
+
+    @validator("password")
+    def validate_password(cls, password):
+        # Ensure password has at least one digit and one letter
+        if not any(char.isdigit() for char in password) or not any(char.isalpha() for char in password):
+            raise ValueError("Password must contain at least one digit and one letter")
+        return password
 
 class UserInDB(User):
     hashed_password: str
 
 class Item(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: constr(min_length=3, max_length=50)  # Name must be between 3 and 50 characters
+    description: Optional[constr(max_length=200)]  # Description can't be longer than 200 characters
 
 # In-memory storage
 items = {}
