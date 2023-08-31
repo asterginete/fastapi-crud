@@ -1,0 +1,32 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+# Development packages go here, for example:
+pytest = "*"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+sqlalchemy = "*"
+asyncpg = "*"
+databases = "*"
+pydantic = {extras = ["email"], version = "*"}
+passlib = {extras = ["bcrypt"], version = "*"}
+jose = "*"
+slowapi = "==0.1.4"
+pillow = "==8.3.1"
+background-tasks = "==0.2.6"
+aiocache = "==0.11.1"
+authlib = "==0.15.3"
+elasticsearch = "==7.13.4"
+posthog = "==1.28.0"
+babel = "==2.9.1"
+pywebpush = "==1.13.0"
+itsdangerous = "*"
+smtplib = "*"
+
+[requires]
+python_version = "3.8"

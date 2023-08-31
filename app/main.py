@@ -1,45 +1,62 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from . import models, schemas, crud, deps
-from databases import Database
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from .database import SessionLocal, engine
+from .core.security import verify_password, get_password_hash, create_access_token, get_current_user
+from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import List
 
 app = FastAPI()
 
-# Database configuration
-DATABASE_URL = "postgresql+asyncpg://username:password@localhost:5432/mydatabase"
-database = Database(DATABASE_URL)
-metadata = models.Base.metadata
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
-
-# Create tables
+# Initialize models
 models.Base.metadata.create_all(bind=engine)
 
+# Dependency to get the database session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 @app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(form_data: deps.OAuth2PasswordRequestForm = Depends()):
-    return await crud.authenticate_user(form_data.username, form_data.password)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = crud.get_user_by_username(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    return crud.create_user(db=db, user=user)
+
+@app.get("/users/me/", response_model=schemas.User)
+async def read_users_me(current_user: schemas.User = Depends(get_current_user)):
+    return current_user
 
 @app.post("/items/", response_model=schemas.Item)
-async def create_item(item: schemas.Item, current_user: schemas.User = Depends(deps.get_current_active_user)):
-    return await crud.create_item(item, current_user.id)
+async def create_item(item: schemas.ItemCreate, db: Session = Depends(get_db), current_user: schemas.User = Depends(get_current_user)):
+    return crud.create_item(db=db, item=item, user_id=current_user.id)
 
 @app.get("/items/", response_model=List[schemas.Item])
-async def read_items(skip: int = 0, limit: int = 10, current_user: schemas.User = Depends(deps.get_current_active_user)):
-    return await crud.get_items(skip=skip, limit=limit)
-
-@app.get("/items/{item_id}", response_model=schemas.Item)
-async def read_item(item_id: int, current_user: schemas.User = Depends(deps.get_current_active_user)):
-    return await crud.get_item(item_id)
+async def list_items(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    items = crud.get_items(db, skip=skip, limit=limit)
+    return items
 
 # ... [Other routes as needed]
 
 @app.on_event("startup")
 async def startup():
-    await database.connect()
+    # Any startup event logic, like initializing resources or connections
+    pass
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    # Any shutdown event logic, like closing resources or connections
+    pass
